@@ -4,12 +4,14 @@ import xlwt
 import timetable
 import re
 
+# 目标文件列 到 keyword的映射（或者叫做 正则表达式 关键字）
 mapping = {
     3: "周数",
     4: "教师",
     5: "地点"
 }
 
+# 目标文件列 到 当前数据文件列的映射
 map_temp_data = {
     0: '2',
     1: '1',
@@ -20,6 +22,7 @@ map_temp_data = {
 }
 
 
+# 回滚函数
 def rollback(in_table, i, j, cell):
     if cell == '':
         k = 0
@@ -30,6 +33,7 @@ def rollback(in_table, i, j, cell):
         return cell
 
 
+# 初始化文件
 def init_file():
     work_book = xlwt.Workbook()
     sheet = work_book.add_sheet("sheet1", cell_overwrite_ok=True)
@@ -45,10 +49,18 @@ def init_file():
 
 def get_token(in_table, row, keyword):
     cell = in_table.cell(row, 3).value
+    # .                 匹配任意字符
+    # *                 匹配前一个元字符0到多次
+    # \W                匹配非数字、字母、下划线中的任意字符
+    # \S                匹配非空白字符
+    # [\u4E00-\u9FA5]   匹配中文
+    # +                 匹配前一个元字符1到多次
     regex = ".*(" + keyword + "\W*(\S*[\u4E00-\u9FA5]+\S*)*)"
     matches = re.match(regex, cell)
+    # 结果去杂，替换 , 成 &
     result = matches.group(1).replace(",", "&")
-    return result.replace(keyword+": ", "")
+    # 取出keyword和  :空格
+    return result.replace(keyword + ": ", "")
 
 
 def handle(in_table, i, j):
@@ -57,6 +69,7 @@ def handle(in_table, i, j):
         return "必修"
     elif k == 0:
         cell = in_table.cell(i, k).value
+        # 这两个都有合并单元格，所以要回滚
         cell1 = rollback(in_table, i, k, cell).replace("星期", "周")
         cell2 = rollback(in_table, i, k + 1, in_table.cell(i, k + 1).value) + "节"
         return cell1 + cell2
